@@ -14,7 +14,7 @@ class SecurityConfig {
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		return http
-			// Sin cookies de sesión no hay superficie CSRF.
+			// API para clientes que no son navegadores; HTTP Basic solo cubre la gestión de la demo.
 			.csrf(AbstractHttpConfigurer::disable)
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(requests -> requests

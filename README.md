@@ -86,6 +86,8 @@ Los tests `*Test` son unitarios y los `*IT` usan PostgreSQL real con Testcontain
 
 Sin juntar mesas, turnos que cruzan medianoche, emails, pagos ni rate limiting. Hay un único administrador global.
 
+La gestión usa HTTP Basic sin protección CSRF, pensada para `curl` o Swagger. Un panel en navegador necesitaría sesión o tokens con esa protección.
+
 ## Licencia
 
 [MIT](LICENSE)

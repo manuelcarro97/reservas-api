@@ -2,6 +2,7 @@ package io.github.manuelcarro97.reservas.adapter.out.persistence;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,11 @@ class TablePersistenceAdapter implements TableRepositoryPort {
 	@Override
 	public List<DiningTable> findAll(long restaurantId) {
 		return tables.findByRestaurantIdOrderById(restaurantId).stream().map(DiningTableEntity::toDomain).toList();
+	}
+
+	@Override
+	public Optional<DiningTable> findById(long id) {
+		return tables.findById(id).map(DiningTableEntity::toDomain);
 	}
 
 	@Override

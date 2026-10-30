@@ -6,13 +6,17 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import io.github.manuelcarro97.reservas.application.port.in.CancelReservationUseCase;
 import io.github.manuelcarro97.reservas.application.port.in.CreateReservationCommand;
 import io.github.manuelcarro97.reservas.application.port.in.CreateReservationUseCase;
+import io.github.manuelcarro97.reservas.application.port.in.GetReservationUseCase;
+import io.github.manuelcarro97.reservas.application.port.in.ReservationDetails;
 import io.github.manuelcarro97.reservas.application.port.out.ReservationRepositoryPort;
 import io.github.manuelcarro97.reservas.application.port.out.RestaurantRepositoryPort;
 import io.github.manuelcarro97.reservas.application.port.out.ShiftRepositoryPort;
 import io.github.manuelcarro97.reservas.application.port.out.TableRepositoryPort;
 import io.github.manuelcarro97.reservas.domain.exception.NoTableAvailableException;
+import io.github.manuelcarro97.reservas.domain.exception.ReservationNotFoundException;
 import io.github.manuelcarro97.reservas.domain.exception.RestaurantNotFoundException;
 import io.github.manuelcarro97.reservas.domain.exception.ShiftNotFoundException;
 import io.github.manuelcarro97.reservas.domain.model.DiningTable;
@@ -24,7 +28,7 @@ import io.github.manuelcarro97.reservas.domain.service.BookingPolicy;
 import io.github.manuelcarro97.reservas.domain.service.TableAssigner;
 
 @Service
-class ReservationService implements CreateReservationUseCase {
+class ReservationService implements CreateReservationUseCase, GetReservationUseCase, CancelReservationUseCase {
 
 	private final RestaurantRepositoryPort restaurants;
 	private final ShiftRepositoryPort shifts;
@@ -59,6 +63,33 @@ class ReservationService implements CreateReservationUseCase {
 			}
 		}
 		throw new NoTableAvailableException();
+	}
+
+	@Override
+	public ReservationDetails byCode(String code) {
+		return details(findByCode(code));
+	}
+
+	@Override
+	public ReservationDetails cancelByCode(String code) {
+		Reservation reservation = findByCode(code);
+		Restaurant restaurant = restaurants.findById(reservation.restaurantId())
+			.orElseThrow(RestaurantNotFoundException::new);
+		Shift shift = shifts.findById(restaurant.id(), reservation.shiftId())
+			.orElseThrow(ShiftNotFoundException::new);
+		reservation.cancelByCustomer(clock.instant(), shift.startsAt(reservation.date(), restaurant.zone()),
+				restaurant.cancellationDeadlineHours());
+		return details(reservations.update(reservation));
+	}
+
+	private Reservation findByCode(String code) {
+		return reservations.findByCode(code).orElseThrow(ReservationNotFoundException::new);
+	}
+
+	private ReservationDetails details(Reservation reservation) {
+		String tableLabel = tables.findById(reservation.tableId()).map(DiningTable::label).orElseThrow();
+		return new ReservationDetails(reservation.code(), reservation.status(), reservation.date(),
+				reservation.shiftId(), reservation.partySize(), tableLabel);
 	}
 
 	private Reservation pendingReservation(Restaurant restaurant, DiningTable table, CreateReservationCommand command) {

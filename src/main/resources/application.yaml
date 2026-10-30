@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: reservas-api
+  flyway:
+    # Los datos de demo son opcionales: una base que los cargó debe arrancar también sin ese perfil.
+    ignore-migration-patterns: '*:future,repeatable:missing'
   jpa:
     open-in-view: false
     hibernate:

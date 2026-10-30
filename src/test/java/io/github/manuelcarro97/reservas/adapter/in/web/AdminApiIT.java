@@ -125,6 +125,28 @@ class AdminApiIT extends PostgresIT {
 	}
 
 	@Test
+	void absurdDateInReservationListReturns400() throws Exception {
+		asAdmin(get("/api/v1/admin/restaurants/demo/reservations").param("date", "+9999999-01-01"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void absurdDateInOccupancyReturns400() throws Exception {
+		asAdmin(get("/api/v1/admin/restaurants/demo/occupancy").param("date", "+9999999-01-01")
+			.param("shiftId", shift.id().toString()))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
+	void absurdDateInClosureReturns400() throws Exception {
+		adminPost("/api/v1/admin/restaurants/demo/closures", """
+				{"date":"+9999999-01-01","reason":"Nunca"}
+				""").andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
 	void overlappingShiftReturns409() throws Exception {
 		adminPost("/api/v1/admin/restaurants/demo/shifts", """
 				{"name":"Tarde","start":"21:00","end":"23:00","days":["MONDAY"]}

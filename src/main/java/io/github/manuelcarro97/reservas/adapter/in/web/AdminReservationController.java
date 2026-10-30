@@ -30,7 +30,7 @@ class AdminReservationController {
 
 	@GetMapping("/restaurants/{slug}/reservations")
 	List<AdminReservation> list(@PathVariable String slug,
-			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+			@RequestParam @SupportedDate @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		return manageReservation.listByDate(slug, date);
 	}
 

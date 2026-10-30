@@ -64,7 +64,8 @@ class AdminRestaurantController {
 
 	@GetMapping("/{slug}/occupancy")
 	List<TableOccupancy> occupancy(@PathVariable String slug,
-			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date, @RequestParam long shiftId) {
+			@RequestParam @SupportedDate @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+			@RequestParam long shiftId) {
 		return occupancy.occupancy(slug, shiftId, date);
 	}
 

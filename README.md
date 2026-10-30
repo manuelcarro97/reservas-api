@@ -92,6 +92,8 @@ Los tests `*Test` son unitarios y los `*IT` usan PostgreSQL real con Testcontain
 
 Sin juntar mesas, turnos que cruzan medianoche, emails, pagos ni rate limiting. Hay un único administrador global.
 
+La comprobación de turnos solapados y de reservas al cerrar un día se hace en la aplicación, no en la base de datos: dos operaciones exactamente simultáneas podrían saltársela. Con un único administrador, el riesgo es asumible.
+
 La gestión usa HTTP Basic sin protección CSRF, pensada para `curl` o Swagger. Un panel en navegador necesitaría sesión o tokens con esa protección.
 
 ## Licencia

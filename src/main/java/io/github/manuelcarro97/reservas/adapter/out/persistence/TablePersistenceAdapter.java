@@ -4,9 +4,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import io.github.manuelcarro97.reservas.application.port.out.TableRepositoryPort;
+import io.github.manuelcarro97.reservas.domain.exception.AlreadyExistsException;
 import io.github.manuelcarro97.reservas.domain.model.DiningTable;
 
 @Component
@@ -35,7 +37,12 @@ class TablePersistenceAdapter implements TableRepositoryPort {
 
 	@Override
 	public DiningTable save(DiningTable table) {
-		return tables.save(DiningTableEntity.from(table)).toDomain();
+		try {
+			return tables.save(DiningTableEntity.from(table)).toDomain();
+		}
+		catch (DataIntegrityViolationException labelTaken) {
+			throw new AlreadyExistsException();
+		}
 	}
 
 }

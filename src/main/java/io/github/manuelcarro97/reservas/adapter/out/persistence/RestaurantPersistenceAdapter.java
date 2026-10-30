@@ -7,6 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import io.github.manuelcarro97.reservas.application.port.out.RestaurantRepositoryPort;
+import io.github.manuelcarro97.reservas.domain.exception.AlreadyExistsException;
 import io.github.manuelcarro97.reservas.domain.model.Restaurant;
 
 @Component
@@ -35,7 +36,12 @@ class RestaurantPersistenceAdapter implements RestaurantRepositoryPort {
 
 	@Override
 	public Restaurant save(Restaurant restaurant) {
-		return restaurants.save(RestaurantEntity.from(restaurant)).toDomain();
+		try {
+			return restaurants.save(RestaurantEntity.from(restaurant)).toDomain();
+		}
+		catch (DataIntegrityViolationException slugTaken) {
+			throw new AlreadyExistsException();
+		}
 	}
 
 	@Override

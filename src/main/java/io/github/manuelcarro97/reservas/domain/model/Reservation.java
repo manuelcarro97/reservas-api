@@ -47,8 +47,11 @@ public class Reservation {
 				customerPhone, customerEmail, ReservationStatus.PENDING, 0, createdAt);
 	}
 
-	public void confirm() {
+	public void confirm(Instant now, Instant shiftStart) {
 		requireStatus(ReservationStatus.PENDING);
+		if (!now.isBefore(shiftStart)) {
+			throw new InvalidTransitionException(status, ReservationStatus.CONFIRMED);
+		}
 		status = ReservationStatus.CONFIRMED;
 	}
 

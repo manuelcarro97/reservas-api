@@ -10,11 +10,14 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 
 import io.github.manuelcarro97.reservas.application.port.in.ManageRestaurantUseCase;
+import io.github.manuelcarro97.reservas.application.port.out.ReservationRepositoryPort;
 import io.github.manuelcarro97.reservas.application.port.out.RestaurantRepositoryPort;
 import io.github.manuelcarro97.reservas.application.port.out.ShiftRepositoryPort;
 import io.github.manuelcarro97.reservas.application.port.out.TableRepositoryPort;
+import io.github.manuelcarro97.reservas.domain.exception.ClosureHasReservationsException;
 import io.github.manuelcarro97.reservas.domain.exception.InvalidZoneException;
 import io.github.manuelcarro97.reservas.domain.exception.RestaurantNotFoundException;
+import io.github.manuelcarro97.reservas.domain.exception.ShiftOverlapException;
 import io.github.manuelcarro97.reservas.domain.model.DiningTable;
 import io.github.manuelcarro97.reservas.domain.model.Restaurant;
 import io.github.manuelcarro97.reservas.domain.model.Shift;
@@ -25,12 +28,14 @@ class RestaurantAdminService implements ManageRestaurantUseCase {
 	private final RestaurantRepositoryPort restaurants;
 	private final TableRepositoryPort tables;
 	private final ShiftRepositoryPort shifts;
+	private final ReservationRepositoryPort reservations;
 
 	RestaurantAdminService(RestaurantRepositoryPort restaurants, TableRepositoryPort tables,
-			ShiftRepositoryPort shifts) {
+			ShiftRepositoryPort shifts, ReservationRepositoryPort reservations) {
 		this.restaurants = restaurants;
 		this.tables = tables;
 		this.shifts = shifts;
+		this.reservations = reservations;
 	}
 
 	@Override
@@ -45,12 +50,20 @@ class RestaurantAdminService implements ManageRestaurantUseCase {
 
 	@Override
 	public Shift addShift(String slug, String name, LocalTime start, LocalTime end, Set<DayOfWeek> days) {
-		return shifts.save(new Shift(null, findRestaurant(slug).id(), name, start, end, days));
+		Shift shift = new Shift(null, findRestaurant(slug).id(), name, start, end, days);
+		if (shifts.findAll(shift.restaurantId()).stream().anyMatch(shift::overlaps)) {
+			throw new ShiftOverlapException();
+		}
+		return shifts.save(shift);
 	}
 
 	@Override
 	public void addClosure(String slug, LocalDate date, String reason) {
-		restaurants.addClosure(findRestaurant(slug).id(), date, reason);
+		long restaurantId = findRestaurant(slug).id();
+		if (reservations.hasActive(restaurantId, date)) {
+			throw new ClosureHasReservationsException();
+		}
+		restaurants.addClosure(restaurantId, date, reason);
 	}
 
 	private Restaurant findRestaurant(String slug) {

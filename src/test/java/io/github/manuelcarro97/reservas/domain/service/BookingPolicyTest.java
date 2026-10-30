@@ -16,6 +16,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import io.github.manuelcarro97.reservas.domain.exception.DateInPastException;
+import io.github.manuelcarro97.reservas.domain.exception.DateTooFarException;
 import io.github.manuelcarro97.reservas.domain.exception.PartyTooLargeException;
 import io.github.manuelcarro97.reservas.domain.exception.RestaurantClosedException;
 import io.github.manuelcarro97.reservas.domain.exception.ShiftNotOpenException;
@@ -50,6 +51,31 @@ class BookingPolicyTest {
 
 		assertThatCode(() -> policy.validate(RESTAURANT, shift, TOMORROW, 2, MAX_CAPACITY, false, NOON_MADRID))
 				.doesNotThrowAnyException();
+	}
+
+	@Test
+	void acceptsLastDayOfBookingWindow() {
+		Shift shift = everyDay(LocalTime.of(20, 0), LocalTime.of(22, 0));
+		LocalDate lastDay = LocalDate.of(2026, 12, 1).plusDays(BookingPolicy.BOOKING_WINDOW_DAYS);
+
+		assertThatCode(() -> policy.validate(RESTAURANT, shift, lastDay, 2, MAX_CAPACITY, false, NOON_MADRID))
+				.doesNotThrowAnyException();
+	}
+
+	@Test
+	void rejectsDateBeyondBookingWindow() {
+		LocalDate tooFar = LocalDate.of(2026, 12, 1).plusDays(BookingPolicy.BOOKING_WINDOW_DAYS + 1);
+
+		assertThatThrownBy(() -> policy.requireWithinWindow(RESTAURANT, tooFar, NOON_MADRID))
+				.isInstanceOf(DateTooFarException.class);
+	}
+
+	@Test
+	void rejectsPastDateBeforeTouchingAnythingElse() {
+		LocalDate past = LocalDate.of(2026, 11, 30);
+
+		assertThatThrownBy(() -> policy.requireWithinWindow(RESTAURANT, past, NOON_MADRID))
+				.isInstanceOf(DateInPastException.class);
 	}
 
 	@Test

@@ -8,9 +8,10 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-record CreateShiftRequest(@NotBlank @Size(max = 60) String name, @NotNull LocalTime start, @NotNull LocalTime end,
+record CreateShiftRequest(@NotBlank @Size(max = 60) @Pattern(regexp = TextRules.NO_NUL) String name, @NotNull LocalTime start, @NotNull LocalTime end,
 		@NotEmpty Set<DayOfWeek> days) {
 
 	@AssertTrue(message = "start must be before end")

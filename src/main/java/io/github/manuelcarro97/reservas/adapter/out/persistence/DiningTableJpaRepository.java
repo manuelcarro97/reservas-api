@@ -18,7 +18,7 @@ interface DiningTableJpaRepository extends JpaRepository<DiningTableEntity, Long
 			where t.restaurantId = :restaurantId
 			  and t.id not in (
 			    select r.tableId from ReservationEntity r
-			    where r.shiftId = :shiftId and r.date = :date
+			    where r.restaurantId = :restaurantId and r.shiftId = :shiftId and r.date = :date
 			      and r.status in (io.github.manuelcarro97.reservas.domain.model.ReservationStatus.PENDING,
 			                       io.github.manuelcarro97.reservas.domain.model.ReservationStatus.CONFIRMED))
 			order by t.id

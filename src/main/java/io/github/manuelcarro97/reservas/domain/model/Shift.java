@@ -13,6 +13,11 @@ public record Shift(Long id, long restaurantId, String name, LocalTime start, Lo
 		return days.contains(date.getDayOfWeek());
 	}
 
+	public boolean overlaps(Shift other) {
+		boolean sharesDay = days.stream().anyMatch(other.days::contains);
+		return sharesDay && start.isBefore(other.end) && other.start.isBefore(end);
+	}
+
 	public Instant startsAt(LocalDate date, ZoneId zone) {
 		return date.atTime(start).atZone(zone).toInstant();
 	}

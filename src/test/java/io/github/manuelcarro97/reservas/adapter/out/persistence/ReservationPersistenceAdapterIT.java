@@ -85,7 +85,7 @@ class ReservationPersistenceAdapterIT extends PostgresIT {
 		Reservation inserted = reservations.tryInsert(reservation("A")).orElseThrow();
 		Reservation first = reservations.findById(inserted.id()).orElseThrow();
 		Reservation stale = reservations.findById(inserted.id()).orElseThrow();
-		first.confirm();
+		first.confirm(Instant.parse("2026-11-01T11:00:00Z"), Instant.parse("2026-12-01T19:00:00Z"));
 		reservations.update(first);
 		stale.cancel();
 

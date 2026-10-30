@@ -1,5 +1,6 @@
 package io.github.manuelcarro97.reservas.application.port.out;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,10 @@ public interface ReservationRepositoryPort {
 	Reservation update(Reservation reservation);
 
 	List<Reservation> findByDate(long restaurantId, LocalDate date);
+
+	boolean hasActive(long restaurantId, LocalDate date);
+
+	int cancelPendingStartedBefore(Instant now);
 
 	Set<Long> occupiedTableIds(long restaurantId, long shiftId, LocalDate date);
 

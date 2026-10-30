@@ -13,6 +13,7 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import io.github.manuelcarro97.reservas.domain.exception.DomainException;
+import io.github.manuelcarro97.reservas.domain.exception.ErrorKind;
 
 @RestControllerAdvice
 class ApiExceptionHandler extends ResponseEntityExceptionHandler {
@@ -21,7 +22,7 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler(DomainException.class)
 	ProblemDetail handleDomain(DomainException exception) {
-		return problem(statusOf(exception.code()), exception.getMessage(), exception.code());
+		return problem(statusOf(exception.kind()), exception.getMessage(), exception.code());
 	}
 
 	@ExceptionHandler(Exception.class)
@@ -46,15 +47,12 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 		return problem;
 	}
 
-	private static HttpStatus statusOf(String code) {
-		return switch (code) {
-			case "RESTAURANT_NOT_FOUND", "SHIFT_NOT_FOUND", "RESERVATION_NOT_FOUND" -> HttpStatus.NOT_FOUND;
-			case "DATE_IN_PAST", "RESTAURANT_CLOSED", "SHIFT_NOT_OPEN", "PARTY_TOO_LARGE" ->
-				HttpStatus.UNPROCESSABLE_CONTENT;
-			case "NO_TABLE_AVAILABLE", "INVALID_TRANSITION", "CANCELLATION_DEADLINE_PASSED", "CONCURRENT_UPDATE",
-					"ALREADY_EXISTS" ->
-				HttpStatus.CONFLICT;
-			default -> HttpStatus.BAD_REQUEST;
+	private static HttpStatus statusOf(ErrorKind kind) {
+		return switch (kind) {
+			case NOT_FOUND -> HttpStatus.NOT_FOUND;
+			case INVALID -> HttpStatus.BAD_REQUEST;
+			case UNPROCESSABLE -> HttpStatus.UNPROCESSABLE_CONTENT;
+			case CONFLICT -> HttpStatus.CONFLICT;
 		};
 	}
 

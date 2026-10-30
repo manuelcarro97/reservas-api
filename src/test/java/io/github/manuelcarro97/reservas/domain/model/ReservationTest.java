@@ -23,7 +23,7 @@ class ReservationTest {
 
 	private static Reservation confirmed() {
 		Reservation reservation = pending();
-		reservation.confirm();
+		reservation.confirm(SHIFT_START.minusSeconds(1), SHIFT_START);
 		return reservation;
 	}
 
@@ -63,7 +63,14 @@ class ReservationTest {
 
 	@Test
 	void confirmCancelled() {
-		assertThatThrownBy(() -> cancelled().confirm()).isInstanceOf(InvalidTransitionException.class);
+		assertThatThrownBy(() -> cancelled().confirm(SHIFT_START.minusSeconds(1), SHIFT_START))
+				.isInstanceOf(InvalidTransitionException.class);
+	}
+
+	@Test
+	void confirmOnceShiftStartedThrows() {
+		assertThatThrownBy(() -> pending().confirm(SHIFT_START, SHIFT_START))
+				.isInstanceOf(InvalidTransitionException.class);
 	}
 
 	@Test

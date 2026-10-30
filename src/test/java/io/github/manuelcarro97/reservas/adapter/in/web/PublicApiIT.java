@@ -163,6 +163,30 @@ class PublicApiIT extends PostgresIT {
 	}
 
 	@Test
+	void absurdlyFarDateReturns422() throws Exception {
+		postReservation(body(2).replace(DATE, "+9999999-01-01")).andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.code").value("DATE_TOO_FAR"));
+	}
+
+	@Test
+	void dateBeyondWindowReturns422() throws Exception {
+		postReservation(body(2).replace(DATE, "2999-01-01")).andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.code").value("DATE_TOO_FAR"));
+	}
+
+	@Test
+	void absurdlyFarDateInAvailabilityReturnsNoShifts() throws Exception {
+		mvc.perform(get("/api/v1/restaurants/demo/availability").param("date", "+9999999-01-01")
+			.param("partySize", "2")).andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(0)));
+	}
+
+	@Test
+	void nulCharacterInNameReturns400() throws Exception {
+		postReservation(body(2).replace("Ana", "A\\u0000")).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
 	void noTableReturns409NoTableAvailable() throws Exception {
 		createReservation();
 

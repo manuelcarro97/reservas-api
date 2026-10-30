@@ -3,7 +3,7 @@ package io.github.manuelcarro97.reservas.domain.exception;
 public class ReservationNotFoundException extends DomainException {
 
 	public ReservationNotFoundException() {
-		super("RESERVATION_NOT_FOUND", "Reservation not found");
+		super("RESERVATION_NOT_FOUND", ErrorKind.NOT_FOUND, "Reservation not found");
 	}
 
 }

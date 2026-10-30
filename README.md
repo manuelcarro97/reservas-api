@@ -22,26 +22,32 @@ La API queda en `http://localhost:8080`, con Swagger en `http://localhost:8080/s
 ## Ejemplos
 
 ```bash
+# Fecha de ejemplo dentro de la ventana de reserva
+FECHA=$(date -d '+7 days' +%F)
+
 # Consultar turnos
-curl "http://localhost:8080/api/v1/restaurants/demo/availability?date=2030-06-12&partySize=2"
+curl "http://localhost:8080/api/v1/restaurants/demo/availability?date=$FECHA&partySize=2"
 
 # Reservar
 curl -X POST http://localhost:8080/api/v1/restaurants/demo/reservations \
   -H "Content-Type: application/json" \
-  -d '{"date":"2030-06-12","shiftId":2,"partySize":2,"customerName":"Ana","customerPhone":"600000000"}'
+  -d "{\"date\":\"$FECHA\",\"shiftId\":2,\"partySize\":2,\"customerName\":\"Ana\",\"customerPhone\":\"600000000\"}"
 
 # Consultar o cancelar con el código recibido
 curl http://localhost:8080/api/v1/reservations/CODIGO
 curl -X POST http://localhost:8080/api/v1/reservations/CODIGO/cancel
 
 # Gestión: lista del día, con las credenciales de .env
-curl -u admin:change-me "http://localhost:8080/api/v1/admin/restaurants/demo/reservations?date=2030-06-12"
+curl -u admin:change-me "http://localhost:8080/api/v1/admin/restaurants/demo/reservations?date=$FECHA"
 ```
 
 ## Reglas de negocio
 
 - El cliente indica personas y turno. El sistema asigna la mesa libre más pequeña que le sirve.
-- No se aceptan turnos ya empezados, días de cierre, turnos que no abren ese día ni grupos mayores que la mesa más grande.
+- No se aceptan turnos ya empezados, fechas a más de 90 días, días de cierre, turnos que no abren ese día ni grupos mayores que la mesa más grande.
+- Los turnos de un local no pueden solaparse, porque la mesa se reserva por turno.
+- No se puede cerrar un día con reservas activas: primero hay que cancelarlas.
+- Una reserva solo se confirma antes de que empiece su turno. Las que siguen pendientes entonces se cancelan solas.
 - Las fechas y horas se evalúan en la zona horaria de cada local.
 - El cliente puede cancelar hasta el plazo del local. El administrador puede cancelar después.
 

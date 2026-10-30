@@ -1,9 +1,12 @@
 package io.github.manuelcarro97.reservas.application.service;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -11,6 +14,7 @@ import io.github.manuelcarro97.reservas.application.port.in.AdminReservation;
 import io.github.manuelcarro97.reservas.application.port.in.CancelReservationUseCase;
 import io.github.manuelcarro97.reservas.application.port.in.CreateReservationCommand;
 import io.github.manuelcarro97.reservas.application.port.in.CreateReservationUseCase;
+import io.github.manuelcarro97.reservas.application.port.in.ExpirePendingReservationsUseCase;
 import io.github.manuelcarro97.reservas.application.port.in.GetReservationUseCase;
 import io.github.manuelcarro97.reservas.application.port.in.ManageReservationUseCase;
 import io.github.manuelcarro97.reservas.application.port.in.ReservationDetails;
@@ -32,7 +36,7 @@ import io.github.manuelcarro97.reservas.domain.service.TableAssigner;
 
 @Service
 class ReservationService implements CreateReservationUseCase, GetReservationUseCase, CancelReservationUseCase,
-		ManageReservationUseCase {
+		ManageReservationUseCase, ExpirePendingReservationsUseCase {
 
 	private final RestaurantRepositoryPort restaurants;
 	private final ShiftRepositoryPort shifts;
@@ -56,6 +60,7 @@ class ReservationService implements CreateReservationUseCase, GetReservationUseC
 	public Reservation create(String slug, CreateReservationCommand command) {
 		Restaurant restaurant = restaurants.findBySlug(slug).orElseThrow(RestaurantNotFoundException::new);
 		Shift shift = shifts.findById(restaurant.id(), command.shiftId()).orElseThrow(ShiftNotFoundException::new);
+		bookingPolicy.requireWithinWindow(restaurant, command.date(), clock);
 		bookingPolicy.validate(restaurant, shift, command.date(), command.partySize(),
 				restaurants.maxCapacity(restaurant.id()), restaurants.isClosed(restaurant.id(), command.date()), clock);
 
@@ -77,11 +82,8 @@ class ReservationService implements CreateReservationUseCase, GetReservationUseC
 	@Override
 	public ReservationDetails cancelByCode(String code) {
 		Reservation reservation = findByCode(code);
-		Restaurant restaurant = restaurants.findById(reservation.restaurantId())
-			.orElseThrow(RestaurantNotFoundException::new);
-		Shift shift = shifts.findById(restaurant.id(), reservation.shiftId())
-			.orElseThrow(ShiftNotFoundException::new);
-		reservation.cancelByCustomer(clock.instant(), shift.startsAt(reservation.date(), restaurant.zone()),
+		Restaurant restaurant = restaurantOf(reservation);
+		reservation.cancelByCustomer(clock.instant(), shiftStart(reservation, restaurant),
 				restaurant.cancellationDeadlineHours());
 		return details(reservations.update(reservation));
 	}
@@ -89,13 +91,19 @@ class ReservationService implements CreateReservationUseCase, GetReservationUseC
 	@Override
 	public List<AdminReservation> listByDate(String slug, LocalDate date) {
 		Restaurant restaurant = restaurants.findBySlug(slug).orElseThrow(RestaurantNotFoundException::new);
-		return reservations.findByDate(restaurant.id(), date).stream().map(this::adminView).toList();
+		Map<Long, String> labels = tables.findAll(restaurant.id())
+			.stream()
+			.collect(Collectors.toMap(DiningTable::id, DiningTable::label));
+		return reservations.findByDate(restaurant.id(), date)
+			.stream()
+			.map(reservation -> adminView(reservation, labels.get(reservation.tableId())))
+			.toList();
 	}
 
 	@Override
 	public ReservationDetails confirm(long id) {
 		Reservation reservation = findById(id);
-		reservation.confirm();
+		reservation.confirm(clock.instant(), shiftStart(reservation, restaurantOf(reservation)));
 		return details(reservations.update(reservation));
 	}
 
@@ -109,11 +117,7 @@ class ReservationService implements CreateReservationUseCase, GetReservationUseC
 	@Override
 	public ReservationDetails markNoShow(long id) {
 		Reservation reservation = findById(id);
-		Restaurant restaurant = restaurants.findById(reservation.restaurantId())
-			.orElseThrow(RestaurantNotFoundException::new);
-		Shift shift = shifts.findById(restaurant.id(), reservation.shiftId())
-			.orElseThrow(ShiftNotFoundException::new);
-		reservation.markNoShow(clock.instant(), shift.startsAt(reservation.date(), restaurant.zone()));
+		reservation.markNoShow(clock.instant(), shiftStart(reservation, restaurantOf(reservation)));
 		return details(reservations.update(reservation));
 	}
 
@@ -121,9 +125,24 @@ class ReservationService implements CreateReservationUseCase, GetReservationUseC
 		return reservations.findById(id).orElseThrow(ReservationNotFoundException::new);
 	}
 
-	private AdminReservation adminView(Reservation reservation) {
+	@Override
+	public int expire() {
+		return reservations.cancelPendingStartedBefore(clock.instant());
+	}
+
+	private Restaurant restaurantOf(Reservation reservation) {
+		return restaurants.findById(reservation.restaurantId()).orElseThrow(RestaurantNotFoundException::new);
+	}
+
+	private Instant shiftStart(Reservation reservation, Restaurant restaurant) {
+		Shift shift = shifts.findById(restaurant.id(), reservation.shiftId())
+			.orElseThrow(ShiftNotFoundException::new);
+		return shift.startsAt(reservation.date(), restaurant.zone());
+	}
+
+	private AdminReservation adminView(Reservation reservation, String tableLabel) {
 		return new AdminReservation(reservation.id(), reservation.code(), reservation.status(), reservation.date(),
-				reservation.shiftId(), reservation.partySize(), tableLabel(reservation), reservation.customerName(),
+				reservation.shiftId(), reservation.partySize(), tableLabel, reservation.customerName(),
 				reservation.customerPhone(), reservation.customerEmail());
 	}
 

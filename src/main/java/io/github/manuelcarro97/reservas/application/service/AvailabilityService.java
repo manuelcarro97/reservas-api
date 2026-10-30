@@ -19,6 +19,7 @@ import io.github.manuelcarro97.reservas.domain.exception.RestaurantNotFoundExcep
 import io.github.manuelcarro97.reservas.domain.exception.ShiftNotFoundException;
 import io.github.manuelcarro97.reservas.domain.model.Restaurant;
 import io.github.manuelcarro97.reservas.domain.model.Shift;
+import io.github.manuelcarro97.reservas.domain.service.BookingPolicy;
 import io.github.manuelcarro97.reservas.domain.service.TableAssigner;
 
 @Service
@@ -29,6 +30,7 @@ class AvailabilityService implements GetAvailabilityUseCase, GetOccupancyUseCase
 	private final TableRepositoryPort tables;
 	private final ReservationRepositoryPort reservations;
 	private final Clock clock;
+	private final BookingPolicy bookingPolicy = new BookingPolicy();
 	private final TableAssigner tableAssigner = new TableAssigner();
 
 	AvailabilityService(RestaurantRepositoryPort restaurants, ShiftRepositoryPort shifts, TableRepositoryPort tables,
@@ -43,7 +45,7 @@ class AvailabilityService implements GetAvailabilityUseCase, GetOccupancyUseCase
 	@Override
 	public List<ShiftAvailability> availability(String slug, LocalDate date, int partySize) {
 		Restaurant restaurant = findRestaurant(slug);
-		if (restaurants.isClosed(restaurant.id(), date)) {
+		if (!bookingPolicy.isWithinWindow(restaurant, date, clock) || restaurants.isClosed(restaurant.id(), date)) {
 			return List.of();
 		}
 		return shifts.findAll(restaurant.id())

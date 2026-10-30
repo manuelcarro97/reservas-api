@@ -125,6 +125,48 @@ class AdminApiIT extends PostgresIT {
 	}
 
 	@Test
+	void overlappingShiftReturns409() throws Exception {
+		adminPost("/api/v1/admin/restaurants/demo/shifts", """
+				{"name":"Tarde","start":"21:00","end":"23:00","days":["MONDAY"]}
+				""").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SHIFT_OVERLAP"));
+	}
+
+	@Test
+	void adjacentShiftIsAllowed() throws Exception {
+		adminPost("/api/v1/admin/restaurants/demo/shifts", """
+				{"name":"Tarde","start":"22:00","end":"23:00","days":["MONDAY"]}
+				""").andExpect(status().isCreated());
+	}
+
+	@Test
+	void closureOverActiveReservationReturns409() throws Exception {
+		givenReservation();
+
+		adminPost("/api/v1/admin/restaurants/demo/closures", """
+				{"date":"2026-12-02","reason":"Reforma"}
+				""").andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("CLOSURE_HAS_RESERVATIONS"));
+	}
+
+	@Test
+	void closureIsAllowedOnceReservationIsCancelled() throws Exception {
+		asAdmin(post(reservationPath(givenReservation(), "cancel")));
+
+		adminPost("/api/v1/admin/restaurants/demo/closures", """
+				{"date":"2026-12-02","reason":"Reforma"}
+				""").andExpect(status().isCreated());
+	}
+
+	@Test
+	void confirmOnceShiftStartedReturns409() throws Exception {
+		Reservation reservation = givenReservation();
+		clock.set(AFTER_DINNER_STARTS);
+
+		asAdmin(post(reservationPath(reservation, "confirm"))).andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("INVALID_TRANSITION"));
+	}
+
+	@Test
 	void shiftEndingBeforeItStartsReturns400() throws Exception {
 		adminPost("/api/v1/admin/restaurants/demo/shifts", """
 				{"name":"Mal","start":"15:00","end":"13:00","days":["MONDAY"]}

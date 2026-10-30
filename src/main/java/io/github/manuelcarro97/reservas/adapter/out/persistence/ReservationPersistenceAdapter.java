@@ -1,6 +1,7 @@
 package io.github.manuelcarro97.reservas.adapter.out.persistence;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import io.github.manuelcarro97.reservas.application.port.out.ReservationRepositoryPort;
 import io.github.manuelcarro97.reservas.domain.exception.ConcurrentUpdateException;
 import io.github.manuelcarro97.reservas.domain.model.Reservation;
+import io.github.manuelcarro97.reservas.domain.model.ReservationStatus;
 
 @Component
 class ReservationPersistenceAdapter implements ReservationRepositoryPort {
@@ -25,6 +27,16 @@ class ReservationPersistenceAdapter implements ReservationRepositoryPort {
 			        :customerName, :customerPhone, :customerEmail, :status, 0, :createdAt)
 			ON CONFLICT (table_id, reservation_date, shift_id) WHERE status IN ('PENDING', 'CONFIRMED') DO NOTHING
 			RETURNING id
+			""";
+
+	private static final String CANCEL_EXPIRED_PENDING = """
+			UPDATE reservation r
+			SET status = 'CANCELLED', version = r.version + 1
+			FROM shift s, restaurant rest
+			WHERE r.shift_id = s.id
+			  AND r.restaurant_id = rest.id
+			  AND r.status = 'PENDING'
+			  AND (r.reservation_date + s.start_time) AT TIME ZONE rest.zone_id <= :now
 			""";
 
 	private final ReservationJpaRepository reservations;
@@ -83,6 +95,17 @@ class ReservationPersistenceAdapter implements ReservationRepositoryPort {
 			.stream()
 			.map(ReservationEntity::toDomain)
 			.toList();
+	}
+
+	@Override
+	public boolean hasActive(long restaurantId, LocalDate date) {
+		return reservations.existsByRestaurantIdAndDateAndStatusIn(restaurantId, date,
+				List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED));
+	}
+
+	@Override
+	public int cancelPendingStartedBefore(Instant now) {
+		return jdbc.sql(CANCEL_EXPIRED_PENDING).param("now", Timestamp.from(now)).update();
 	}
 
 	@Override

@@ -15,9 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.github.manuelcarro97.reservas.application.port.out.ReservationRepositoryPort;
-import io.github.manuelcarro97.reservas.application.port.out.RestaurantRepositoryPort;
-import io.github.manuelcarro97.reservas.application.port.out.ShiftRepositoryPort;
-import io.github.manuelcarro97.reservas.application.port.out.TableRepositoryPort;
 import io.github.manuelcarro97.reservas.domain.exception.ConcurrentUpdateException;
 import io.github.manuelcarro97.reservas.domain.model.DiningTable;
 import io.github.manuelcarro97.reservas.domain.model.Reservation;
@@ -28,15 +25,6 @@ import io.github.manuelcarro97.reservas.support.PostgresIT;
 class ReservationPersistenceAdapterIT extends PostgresIT {
 
 	private static final LocalDate DATE = LocalDate.of(2026, 12, 1);
-
-	@Autowired
-	private RestaurantRepositoryPort restaurants;
-
-	@Autowired
-	private TableRepositoryPort tables;
-
-	@Autowired
-	private ShiftRepositoryPort shifts;
 
 	@Autowired
 	private ReservationRepositoryPort reservations;
